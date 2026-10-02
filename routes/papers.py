@@ -1,19 +1,51 @@
-"""
-Papers API Routes for CoreAlgorithm PROBLEM95.
-Provides paper generation, historical listing, single paper retrieval, and deletion.
-"""
-
+import os
+import uuid
+from werkzeug.utils import secure_filename
 from flask import Blueprint, request, jsonify
+from config import Config
 from services.paper_generator import generate_paper, get_papers, get_paper_by_id, delete_paper
 
 papers_bp = Blueprint('papers', __name__, url_prefix='/api')
+
+@papers_bp.route('/logo/upload', methods=['POST'])
+def upload_logo():
+    """Uploads and validates institution logo (PNG, JPG, JPEG)."""
+    if 'logo' not in request.files:
+        return jsonify({'success': False, 'error': 'No file part in request.'}), 400
+
+    file = request.files['logo']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected.'}), 400
+
+    filename = secure_filename(file.filename)
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+
+    if ext not in Config.ALLOWED_LOGO_EXTENSIONS:
+        return jsonify({
+            'success': False,
+            'error': f"Invalid image format '.{ext}'. Only PNG, JPG, and JPEG files are supported."
+        }), 400
+
+    os.makedirs(Config.LOGO_UPLOAD_FOLDER, exist_ok=True)
+    unique_filename = f"logo_{uuid.uuid4().hex[:8]}_{filename}"
+    file_path = os.path.join(Config.LOGO_UPLOAD_FOLDER, unique_filename)
+    file.save(file_path)
+
+    logo_url = f"/uploads/logos/{unique_filename}"
+    return jsonify({
+        'success': True,
+        'logo_url': logo_url,
+        'logo_path': file_path,
+        'filename': unique_filename,
+        'message': 'Logo uploaded successfully.'
+    })
 
 @papers_bp.route('/generate', methods=['POST'])
 @papers_bp.route('/paper/generate', methods=['POST'])
 def generate_question_paper_endpoint():
     config = request.get_json() or {}
 
-    # If dynamic structure is provided, derive marks and count if not explicitly set
+    # If dynamic structure is provided, derive marks strictly from questions_to_answer * marks_per_q
     if config.get('structure'):
         calc_marks = 0
         calc_count = 0
@@ -21,18 +53,20 @@ def generate_question_paper_endpoint():
             sections = p.get('sections', [])
             if not sections:
                 q_c = int(p.get('question_count', 0))
+                q_a = int(p.get('questions_to_answer', q_c)) or q_c
                 m_q = int(p.get('marks_per_question', 0))
                 calc_count += q_c
-                calc_marks += q_c * m_q
+                calc_marks += q_a * m_q
             else:
                 for s in sections:
                     q_c = int(s.get('question_count', 0))
+                    q_a = int(s.get('questions_to_answer', q_c)) or q_c
                     m_q = int(s.get('marks_per_question', 0))
                     calc_count += q_c
-                    calc_marks += q_c * m_q
-        if not config.get('total_marks') or int(config.get('total_marks', 0)) <= 0:
+                    calc_marks += q_a * m_q
+        if calc_marks > 0:
             config['total_marks'] = calc_marks
-        if not config.get('question_count') or int(config.get('question_count', 0)) <= 0:
+        if calc_count > 0:
             config['question_count'] = calc_count
 
     # Validation

@@ -24,11 +24,107 @@ const PaperView = {
     const execTime = data.statistics?.execution_time_ms || data.execution_time_ms || 0;
     const objScore = data.objective_score?.total_score || data.objective_score || 90;
 
-    // Update Header
+    // Extract institutional metadata
+    let inst = config?.header_config || config?.institution_data || {};
+    if (data.institution_data_json) {
+      try {
+        const parsed = JSON.parse(data.institution_data_json);
+        inst = { ...parsed, ...inst };
+      } catch (e) {}
+    }
+    if (data.header_config_json) {
+      try {
+        const parsed = JSON.parse(data.header_config_json);
+        inst = { ...parsed, ...inst };
+      } catch (e) {}
+    }
+
+    const instName = (inst.institution_name || 'ABC INSTITUTE OF TECHNOLOGY').toUpperCase();
+    const instAddr = (inst.institution_address || 'AUTONOMOUS EXAMINATIONS BRANCH, HYDERABAD').toUpperCase();
+    const branchName = inst.branch || inst.department || 'COMPUTER SCIENCE AND ENGINEERING';
+    const subjCode = inst.subject_code || 'CS601PC';
+    const courseCode = inst.course_code || 'R20-CSE';
+    const semester = inst.semester || 'III Year II Semester';
+    const examDate = inst.exam_date || '15-11-2026';
+    const duration = inst.duration || (totalMarks >= 70 ? '3 Hours' : (totalMarks >= 40 ? '2 Hours' : '1 Hour'));
+    const logoPath = inst.logo_path || data.logo_path || config?.logo_path || '';
+    const instructions = inst.instructions || '1. Answer all questions in Part A.\n2. In Part B, answer either (a) or (b) from each question.\n3. Assume suitable missing data if necessary.';
+
+    // Render Academic Header Preview
+    const headerContainer = document.querySelector('.paper-official-header');
+    if (headerContainer) {
+      const logoHtml = logoPath ? `
+        <div style="width: 70px; height: 70px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 18px; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; background: #fff;">
+          <img src="/${logoPath.replace(/\\/g, '/')}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        </div>
+      ` : '';
+
+      headerContainer.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 12px; text-align: center;">
+          ${logoHtml}
+          <div>
+            <div style="font-size: 16px; font-weight: 800; letter-spacing: 0.5px; color: var(--text-primary); margin-bottom: 2px;">
+              ${this.escapeHtml(instName)}
+            </div>
+            <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 2px;">
+              ${this.escapeHtml(instAddr)}
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">
+              DEPARTMENT OF ${this.escapeHtml(branchName.toUpperCase())}
+            </div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">
+              ${this.escapeHtml(paperName.toUpperCase())}
+            </div>
+          </div>
+        </div>
+
+        <!-- Academic Info Grid -->
+        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1.2fr; border: 1px solid var(--border-color); font-size: 11.5px; margin-bottom: 12px; background: var(--bg-card);">
+          <div style="padding: 5px 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+            <strong>Branch / Dept:</strong> ${this.escapeHtml(branchName)}
+          </div>
+          <div style="padding: 5px 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+            <strong>Course Code:</strong> ${this.escapeHtml(courseCode)}
+          </div>
+          <div style="padding: 5px 8px; border-bottom: 1px solid var(--border-color);">
+            <strong>Sub Code:</strong> ${this.escapeHtml(subjCode)}
+          </div>
+          <div style="padding: 5px 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+            <strong>Subject:</strong> ${this.escapeHtml(subject)}
+          </div>
+          <div style="padding: 5px 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+            <strong>Date:</strong> ${this.escapeHtml(examDate)}
+          </div>
+          <div style="padding: 5px 8px; border-bottom: 1px solid var(--border-color); font-weight: 700; color: var(--primary);">
+            <strong>Max Marks:</strong> ${totalMarks}M
+          </div>
+          <div style="padding: 5px 8px; border-right: 1px solid var(--border-color);">
+            <strong>Semester:</strong> ${this.escapeHtml(semester)}
+          </div>
+          <div style="padding: 5px 8px; border-right: 1px solid var(--border-color);">
+            <strong>Academic Year:</strong> 2026-2027
+          </div>
+          <div style="padding: 5px 8px;">
+            <strong>Duration:</strong> ${this.escapeHtml(duration)}
+          </div>
+        </div>
+      `;
+    }
+
+    // Render Instructions
+    const instructionsContainer = document.querySelector('.paper-instructions');
+    if (instructionsContainer) {
+      const instLines = instructions.split('\n').filter(l => l.trim());
+      instructionsContainer.innerHTML = `
+        <strong>General Instructions:</strong>
+        <ol style="margin-left: 20px; margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-secondary);">
+          ${instLines.map(line => `<li>${this.escapeHtml(line.replace(/^[0-9]+\.\s*/, ''))}</li>`).join('')}
+        </ol>
+      `;
+    }
+
+    // Update Header Badges
     document.getElementById('paperTitleDisplay').textContent = paperName;
-    document.getElementById('paperTotalMarksDisplay').textContent = `Max Marks: ${totalMarks}`;
-    document.getElementById('paperDurationDisplay').textContent = totalMarks >= 70 ? 'Duration: 3 Hours' : (totalMarks >= 40 ? 'Duration: 2 Hours' : 'Duration: 1 Hour');
-    document.getElementById('paperSubjectDisplay').textContent = `Subject: ${subject}`;
     document.getElementById('paperAlgoBadge').textContent = `${algoUsed} (${execTime}ms)`;
     document.getElementById('paperObjScoreBadge').textContent = `Score: ${objScore}/100`;
 
@@ -54,7 +150,7 @@ const PaperView = {
       }
     }
 
-    // Render Questions by Parts & Internal Choices
+    // Render Questions by Parts & Sections
     const qList = data.selected_questions || data.questions || [];
     this.renderFormattedQuestions(qList);
 
@@ -77,32 +173,59 @@ const PaperView = {
       return;
     }
 
-    // Group questions by Part
+    // Group questions by Part, then Section
     const partsMap = new Map();
     qList.forEach(q => {
       const pName = q.part_name || 'PART A';
+      const sName = q.section_name || '';
       if (!partsMap.has(pName)) {
-        partsMap.set(pName, []);
+        partsMap.set(pName, new Map());
       }
-      partsMap.get(pName).push(q);
+      const secMap = partsMap.get(pName);
+      if (!secMap.has(sName)) {
+        secMap.set(sName, []);
+      }
+      secMap.get(sName).push(q);
     });
 
     let html = '';
     let globalCounter = 1;
 
-    partsMap.forEach((questions, partName) => {
+    partsMap.forEach((sectionsMap, partName) => {
       html += `
-        <div class="exam-part-banner">
+        <div class="exam-part-banner" style="margin-top: 18px; margin-bottom: 10px;">
           ${this.escapeHtml(partName)}
         </div>
       `;
 
-      // Group choices
-      let i = 0;
-      while (i < questions.length) {
-        const q = questions[i];
-        const isChoice = Boolean(q.is_choice);
-        const choiceGroup = q.choice_group;
+      sectionsMap.forEach((questions, sectionName) => {
+        const firstQ = questions[0] || {};
+        const qDisp = questions.filter(q => !q.is_choice).length;
+        const qAtt = firstQ.questions_to_answer || qDisp;
+        const mPerQ = firstQ.marks || 2;
+        const secMarks = firstQ.section_marks || (qAtt * mPerQ);
+        const secInstr = firstQ.section_instructions || (qAtt < qDisp ? `Answer any ${qAtt} questions out of ${qDisp}.` : `Answer all ${qDisp} questions.`);
+
+        if (sectionName || secInstr) {
+          html += `
+            <div style="background: var(--bg-card-subtle); border-left: 3px solid var(--secondary); padding: 8px 12px; margin-bottom: 12px; border-radius: 0 4px 4px 0;">
+              ${sectionName ? `<div style="font-weight: 700; font-size: 13px; color: var(--text-primary);">${this.escapeHtml(sectionName.toUpperCase())}</div>` : ''}
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 2px; font-size: 11.5px; color: var(--text-secondary);">
+                <span><strong>Instructions:</strong> <i>${this.escapeHtml(secInstr)}</i></span>
+                <span class="badge badge-unit">
+                  [ ${qDisp} Questions &times; ${mPerQ}M &nbsp;|&nbsp; Attempt any ${qAtt} &nbsp;|&nbsp; Max: ${secMarks}M ]
+                </span>
+              </div>
+            </div>
+          `;
+        }
+
+        // Group choices
+        let i = 0;
+        while (i < questions.length) {
+          const q = questions[i];
+          const isChoice = Boolean(q.is_choice);
+          const choiceGroup = q.choice_group;
 
         // Check if next question is a choice twin
         const nextQ = questions[i + 1];

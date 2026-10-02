@@ -1667,22 +1667,69 @@ input[type="range"] {
 }
 
 .section-builder-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1.5fr 1.5fr auto;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  align-items: center;
-  padding: 10px 14px;
-  background: var(--bg-card-subtle);
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  margin-bottom: 10px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-@media (max-width: 900px) {
-  .section-builder-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
+.section-inputs-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 2.5fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(100px, 1fr) minmax(140px, 1.4fr) auto;
+  gap: 12px;
+  align-items: end;
+  width: 100%;
+}
+
+.section-inputs-grid input[type="number"],
+.section-inputs-grid input[type="text"],
+.section-inputs-grid select {
+  width: 100%;
+  min-width: 80px;
+  height: 38px;
+  padding: 6px 10px;
+  font-size: 13.5px;
+  box-sizing: border-box;
+}
+
+.section-inputs-grid input[type="number"] {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+}
+
+/* Ensure marks/question input has prominent styling and easy clickability */
+.section-marks-input {
+  border-color: var(--primary) !important;
+  font-weight: 700 !important;
+  color: var(--primary) !important;
+  background-color: var(--bg-card) !important;
+}
+
+.section-marks-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-glow) !important;
+  outline: none;
+}
+
+@media (max-width: 1000px) {
+  .section-inputs-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 }
+
+@media (max-width: 600px) {
+  .section-inputs-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
 
 .live-marks-summary-banner {
   display: flex;

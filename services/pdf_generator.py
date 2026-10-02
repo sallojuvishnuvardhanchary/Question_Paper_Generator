@@ -9,7 +9,7 @@ from typing import Dict, List, Any
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, HRFlowable, Image
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -52,6 +52,8 @@ def generate_exam_pdf(
     """
     Generates a formal, printable academic question paper PDF.
     Returns the absolute path to the generated PDF file.
+    Supports client logos, custom institutional headers, section instructions,
+    and continuous question numbering.
     """
     folder = output_dir or Config.GENERATED_PAPERS_FOLDER
     os.makedirs(folder, exist_ok=True)
@@ -79,7 +81,18 @@ def generate_exam_pdf(
         leading=16,
         alignment=1, # Center
         textColor=colors.black,
-        spaceAfter=3
+        spaceAfter=2
+    )
+
+    addr_style = ParagraphStyle(
+        'InstAddr',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=12,
+        alignment=1,
+        textColor=colors.HexColor("#334155"),
+        spaceAfter=2
     )
 
     dept_style = ParagraphStyle(
@@ -101,7 +114,7 @@ def generate_exam_pdf(
         leading=14,
         alignment=1,
         textColor=colors.black,
-        spaceAfter=8
+        spaceAfter=6
     )
 
     part_header_style = ParagraphStyle(
@@ -113,7 +126,7 @@ def generate_exam_pdf(
         alignment=1,
         textColor=colors.black,
         spaceBefore=10,
-        spaceAfter=6
+        spaceAfter=4
     )
 
     section_header_style = ParagraphStyle(
@@ -125,7 +138,7 @@ def generate_exam_pdf(
         alignment=0, # Left
         textColor=colors.black,
         spaceBefore=6,
-        spaceAfter=4
+        spaceAfter=2
     )
 
     q_text_style = ParagraphStyle(
@@ -153,8 +166,8 @@ def generate_exam_pdf(
         'MetaLabel',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=9,
-        leading=12,
+        fontSize=8.5,
+        leading=11.5,
         textColor=colors.black
     )
 
@@ -162,8 +175,8 @@ def generate_exam_pdf(
         'MetaVal',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9,
-        leading=12,
+        fontSize=8.5,
+        leading=11.5,
         textColor=colors.black
     )
 
@@ -171,44 +184,90 @@ def generate_exam_pdf(
 
     # 1. INSTITUTION & EXAM HEADER
     inst = institution_data or {}
-    inst_name = inst.get('institution_name', 'UNIVERSITY EXAMINATION BOARD').upper()
-    dept_name = inst.get('department', 'DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING')
-    exam_name = inst.get('exam_name', paper_data.get('paper_name', 'B.TECH SEMESTER DEGREE EXAMINATION')).upper()
-    subject = paper_data.get('subject', 'Design and Analysis of Algorithms')
-    subj_code = inst.get('subject_code', 'CS-501')
+    inst_name = (inst.get('institution_name') or 'ABC INSTITUTE OF TECHNOLOGY').upper()
+    inst_addr = (inst.get('institution_address') or 'AUTONOMOUS EXAMINATIONS BRANCH, HYDERABAD').upper()
+    branch_name = inst.get('branch') or inst.get('department') or 'COMPUTER SCIENCE AND ENGINEERING'
+    exam_name = (inst.get('exam_name') or paper_data.get('paper_name') or 'B.TECH III YEAR II SEMESTER REGULAR EXAMINATIONS').upper()
+    subject = paper_data.get('subject') or inst.get('subject') or 'Design and Analysis of Algorithms'
+    subj_code = inst.get('subject_code', 'CS601PC')
+    course_code = inst.get('course_code', 'R20-CSE')
+    semester = inst.get('semester', 'III Year II Semester')
+    academic_year = inst.get('academic_year', '2026-2027')
+    exam_date = inst.get('exam_date') or inst.get('date', '15-11-2026')
     duration = inst.get('duration', '3 Hours')
     max_marks = paper_data.get('total_marks', 100)
     instructions = inst.get('instructions', '1. Answer all questions in Part A.\n2. In Part B, answer either (a) or (b) from each question.\n3. Assume suitable missing data if necessary.')
 
-    elements.append(Paragraph(inst_name, inst_style))
-    elements.append(Paragraph(dept_name, dept_style))
-    elements.append(Paragraph(exam_name, exam_style))
+    # Check for logo image
+    logo_path = inst.get('logo_path') or paper_data.get('logo_path')
+    logo_element = None
+    if logo_path:
+        actual_logo_path = logo_path
+        if not os.path.isabs(actual_logo_path):
+            actual_logo_path = os.path.join(Config.BASE_DIR, actual_logo_path)
+        if os.path.exists(actual_logo_path):
+            try:
+                logo_element = Image(actual_logo_path, width=1.1 * inch, height=0.9 * inch, kind='proportional')
+            except Exception as img_err:
+                print(f"Note: Could not load logo image {actual_logo_path}: {img_err}")
+                logo_element = None
+
+    if logo_element:
+        # 2-column header: Logo on Left, Academic Text on Right
+        text_flowables = [
+            Paragraph(inst_name, inst_style),
+            Paragraph(inst_addr, addr_style),
+            Paragraph(f"DEPARTMENT OF {branch_name.upper()}", dept_style),
+            Paragraph(exam_name, exam_style)
+        ]
+        header_table = Table([[logo_element, text_flowables]], colWidths=[1.3 * inch, 5.9 * inch])
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('ALIGN', (0,0), (0,0), 'CENTER'),
+            ('ALIGN', (1,0), (1,0), 'CENTER'),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ]))
+        elements.append(header_table)
+    else:
+        elements.append(Paragraph(inst_name, inst_style))
+        if inst_addr:
+            elements.append(Paragraph(inst_addr, addr_style))
+        elements.append(Paragraph(f"DEPARTMENT OF {branch_name.upper()}", dept_style))
+        elements.append(Paragraph(exam_name, exam_style))
 
     # Info Grid Table
     info_data = [
         [
-            Paragraph(f"<b>Subject:</b> {subject}", meta_label_style),
-            Paragraph(f"<b>Sub Code:</b> {subj_code}", meta_val_style),
-            Paragraph(f"<b>Max Marks:</b> {max_marks}", meta_label_style)
+            Paragraph(f"<b>Branch / Dept:</b> {branch_name}", meta_label_style),
+            Paragraph(f"<b>Course Code:</b> {course_code}", meta_val_style),
+            Paragraph(f"<b>Subject Code:</b> {subj_code}", meta_label_style)
         ],
         [
-            Paragraph(f"<b>Time / Duration:</b> {duration}", meta_label_style),
-            Paragraph(f"<b>Academic Year:</b> {inst.get('academic_year', '2026-2027')}", meta_val_style),
-            Paragraph(f"<b>Semester:</b> {inst.get('semester', 'V Semester')}", meta_val_style)
+            Paragraph(f"<b>Subject:</b> {subject}", meta_label_style),
+            Paragraph(f"<b>Date of Exam:</b> {exam_date}", meta_val_style),
+            Paragraph(f"<b>Max Marks:</b> {max_marks} Marks", meta_label_style)
+        ],
+        [
+            Paragraph(f"<b>Semester / Year:</b> {semester}", meta_label_style),
+            Paragraph(f"<b>Academic Year:</b> {academic_year}", meta_val_style),
+            Paragraph(f"<b>Time / Duration:</b> {duration}", meta_label_style)
         ]
     ]
 
-    info_table = Table(info_data, colWidths=[3.2 * inch, 2.2 * inch, 1.8 * inch])
+    info_table = Table(info_data, colWidths=[3.0 * inch, 2.3 * inch, 1.9 * inch])
     info_table.setStyle(TableStyle([
         ('BOX', (0,0), (-1,-1), 1, colors.black),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#94a3b8")),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
         ('LEFTPADDING', (0,0), (-1,-1), 6),
         ('RIGHTPADDING', (0,0), (-1,-1), 6),
     ]))
     elements.append(info_table)
-    elements.append(Spacer(1, 8))
+    elements.append(Spacer(1, 6))
 
     # Instructions box
     inst_lines = [f"• {line.strip()}" for line in instructions.split('\n') if line.strip()]
@@ -220,13 +279,13 @@ def generate_exam_pdf(
     inst_table.setStyle(TableStyle([
         ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor("#64748b")),
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#f8fafc")),
-        ('TOPPADDING', (0,0), (-1,-1), 5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
         ('LEFTPADDING', (0,0), (-1,-1), 8),
         ('RIGHTPADDING', (0,0), (-1,-1), 8),
     ]))
     elements.append(inst_table)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
 
     # 2. QUESTIONS (GROUPED BY PART & SECTION)
     questions = paper_data.get('questions', paper_data.get('selected_questions', []))
@@ -247,8 +306,31 @@ def generate_exam_pdf(
         elements.append(HRFlowable(width="100%", thickness=1, color=colors.black, spaceBefore=2, spaceAfter=8))
 
         for s_name, sec_questions in sections.items():
-            if s_name:
-                elements.append(Paragraph(f"<b>{s_name.upper()}</b>", section_header_style))
+            first_q = sec_questions[0] if sec_questions else {}
+            q_disp = len([q for q in sec_questions if not q.get('is_choice')])
+            q_attempt = int(first_q.get('questions_to_answer') or q_disp)
+            m_per_q = int(first_q.get('marks', 2))
+            sec_marks = int(first_q.get('section_marks') or (q_attempt * m_per_q))
+            sec_instr = first_q.get('section_instructions')
+            if not sec_instr:
+                if q_attempt < q_disp:
+                    sec_instr = f"Answer any {q_attempt} question{'s' if q_attempt > 1 else ''} out of {q_disp}."
+                else:
+                    sec_instr = f"Answer all {q_disp} questions."
+
+            sec_title_text = f"<b>{s_name.upper()}</b>" if s_name else "<b>SECTION</b>"
+            elements.append(Paragraph(sec_title_text, section_header_style))
+
+            # Section Instruction Badge
+            sec_badge_text = (
+                f"<b>Instructions:</b> {sec_instr} &nbsp;&nbsp;&nbsp;&nbsp; "
+                f"<b>[ {q_disp} Questions &times; {m_per_q}M &nbsp;|&nbsp; "
+                f"Attempt any {q_attempt} &nbsp;|&nbsp; Max Marks: {sec_marks} ]</b>"
+            )
+            elements.append(Paragraph(
+                sec_badge_text,
+                ParagraphStyle('SecBadge', parent=styles['Normal'], fontSize=8.5, leading=11.5, textColor=colors.HexColor("#1e293b"), spaceAfter=5)
+            ))
 
             # Group choices if present
             # If questions share a choice_group, display them as Q (a) OR Q (b)

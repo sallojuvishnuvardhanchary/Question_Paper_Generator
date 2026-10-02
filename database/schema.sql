@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS papers (
     answer_key_pdf_path TEXT DEFAULT '',
     answer_key_json TEXT DEFAULT '',
     institution_data_json TEXT DEFAULT '',
+    logo_path TEXT DEFAULT '',
+    header_config_json TEXT DEFAULT '',
     metrics_json TEXT,
     constraints_json TEXT,
     status TEXT NOT NULL DEFAULT 'Valid',

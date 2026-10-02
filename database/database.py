@@ -51,6 +51,10 @@ def init_db(force=False):
             cursor.execute("ALTER TABLE papers ADD COLUMN answer_key_json TEXT DEFAULT ''")
         if 'institution_data_json' not in cols:
             cursor.execute("ALTER TABLE papers ADD COLUMN institution_data_json TEXT DEFAULT ''")
+        if 'logo_path' not in cols:
+            cursor.execute("ALTER TABLE papers ADD COLUMN logo_path TEXT DEFAULT ''")
+        if 'header_config_json' not in cols:
+            cursor.execute("ALTER TABLE papers ADD COLUMN header_config_json TEXT DEFAULT ''")
         
         # Check questions table columns
         q_cols = [c[1] for c in cursor.execute("PRAGMA table_info(questions)").fetchall()]

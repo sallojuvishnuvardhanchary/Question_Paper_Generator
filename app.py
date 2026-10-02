@@ -42,6 +42,10 @@ def create_app(config_class=Config):
     def index():
         return render_template('index.html')
 
+    @app.route('/uploads/logos/<path:filename>')
+    def uploaded_logo(filename):
+        return send_from_directory(Config.LOGO_UPLOAD_FOLDER, filename)
+
     @app.route('/health')
     def health_check():
         return jsonify({'status': 'online', 'problem': 'CoreAlgorithm PROBLEM95', 'version': '1.0.0'})

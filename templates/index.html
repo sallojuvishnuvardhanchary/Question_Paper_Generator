@@ -658,9 +658,97 @@
                 <input type="hidden" id="genTotalMarks" value="100">
                 <input type="hidden" id="genQuestionCount" value="10">
 
-                <div class="form-group" style="max-width: 480px; margin-bottom: 20px;">
-                  <label class="form-label">Examination Title</label>
-                  <input type="text" id="genPaperName" class="form-control" value="Autonomous Degree Semester Examination">
+                <!-- Institutional Header & Logo Customization Form -->
+                <div class="card" style="margin-bottom: 24px; border: 1px solid var(--border-color); background: var(--bg-card-subtle);">
+                  <div class="card-header" style="padding: 12px 18px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                      <div>
+                        <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0;">
+                          🏛️ Institutional Header & Logo Branding
+                        </h4>
+                        <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
+                          Configures the official institution title, logo, and academic codes printed on the PDF
+                        </div>
+                      </div>
+                      <span class="badge badge-unit">Formal PDF Header</span>
+                    </div>
+                  </div>
+                  <div class="card-body" style="padding: 18px;">
+                    <!-- Top row: Logo Upload & Basic Info -->
+                    <div style="display: grid; grid-template-columns: 180px 1fr 1fr; gap: 18px; margin-bottom: 16px;">
+                      <!-- Logo upload block -->
+                      <div style="text-align: center; border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 12px; background: var(--bg-card);">
+                        <div id="hdrLogoPreviewContainer" style="width: 72px; height: 72px; margin: 0 auto 8px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff;">
+                          <img id="hdrLogoImg" src="" alt="Institution Logo" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
+                          <span id="hdrLogoPlaceholder" style="font-size: 28px; color: var(--text-muted);">🏛️</span>
+                        </div>
+                        <input type="file" id="hdrLogoInput" accept=".png,.jpg,.jpeg" style="display: none;">
+                        <input type="hidden" id="hdrLogoPath" value="">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('hdrLogoInput').click()" style="width: 100%; font-size: 11px; padding: 4px 6px;">
+                          📷 Upload Logo
+                        </button>
+                        <div id="hdrLogoStatus" style="font-size: 10.5px; color: var(--text-muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                          PNG, JPG (Max 5MB)
+                        </div>
+                      </div>
+
+                      <!-- Institution Name & Location -->
+                      <div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                          <label class="form-label" style="font-size: 12px; font-weight: 600;">Institution Name</label>
+                          <input type="text" id="hdrInstName" class="form-control form-control-sm" value="ABC INSTITUTE OF TECHNOLOGY" placeholder="e.g. ABC INSTITUTE OF TECHNOLOGY">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                          <label class="form-label" style="font-size: 12px; font-weight: 600;">Institution Address / Location</label>
+                          <input type="text" id="hdrInstAddress" class="form-control form-control-sm" value="AUTONOMOUS EXAMINATIONS BRANCH, HYDERABAD" placeholder="e.g. AUTONOMOUS EXAMINATIONS BRANCH, HYDERABAD">
+                        </div>
+                      </div>
+
+                      <!-- Examination Name & Branch -->
+                      <div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                          <label class="form-label" style="font-size: 12px; font-weight: 600;">Examination Name</label>
+                          <input type="text" id="genPaperName" class="form-control form-control-sm" value="B.Tech III Year II Semester Regular Examinations" placeholder="e.g. B.Tech III Year II Semester Regular Examinations">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                          <label class="form-label" style="font-size: 12px; font-weight: 600;">Branch / Department</label>
+                          <input type="text" id="hdrBranch" class="form-control form-control-sm" value="Computer Science and Engineering" placeholder="e.g. Computer Science & Engineering">
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Middle Grid: Codes, Semester, Date, Duration -->
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 14px;">
+                      <div>
+                        <label class="form-label" style="font-size: 11.5px; font-weight: 600;">Subject Code</label>
+                        <input type="text" id="hdrSubjectCode" class="form-control form-control-sm" value="CS601PC" placeholder="e.g. CS601PC">
+                      </div>
+                      <div>
+                        <label class="form-label" style="font-size: 11.5px; font-weight: 600;">Course Code</label>
+                        <input type="text" id="hdrCourseCode" class="form-control form-control-sm" value="R20-CSE" placeholder="e.g. R20-CSE">
+                      </div>
+                      <div>
+                        <label class="form-label" style="font-size: 11.5px; font-weight: 600;">Semester / Year</label>
+                        <input type="text" id="hdrSemester" class="form-control form-control-sm" value="III Year II Semester" placeholder="e.g. III Year II Semester">
+                      </div>
+                      <div>
+                        <label class="form-label" style="font-size: 11.5px; font-weight: 600;">Date of Exam</label>
+                        <input type="text" id="hdrExamDate" class="form-control form-control-sm" value="15-11-2026" placeholder="DD-MM-YYYY">
+                      </div>
+                      <div>
+                        <label class="form-label" style="font-size: 11.5px; font-weight: 600;">Time / Duration</label>
+                        <input type="text" id="hdrDuration" class="form-control form-control-sm" value="3 Hours" placeholder="e.g. 3 Hours">
+                      </div>
+                    </div>
+
+                    <!-- General Instructions -->
+                    <div>
+                      <label class="form-label" style="font-size: 11.5px; font-weight: 600;">General Examination Instructions (One per line)</label>
+                      <textarea id="hdrInstructions" class="form-control form-control-sm" rows="2" style="font-size: 12px; resize: vertical;">1. Answer all questions in Part A.
+2. In Part B, answer either (a) or (b) from each question.
+3. Assume suitable missing data if necessary.</textarea>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Dynamic Structure Container -->
@@ -820,6 +908,135 @@
                   <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
                     Executes optimization algorithm, validates constraints, and generates downloadable ReportLab examination PDF.
                   </p>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- REAL-TIME DAA ALGORITHM VISUALIZATION DASHBOARD (STEP 7) -->
+                <!-- ======================================================== -->
+                <div id="step7VisualizationPanel" style="display: none; margin-top: 24px; border-top: 2px solid var(--border-color); padding-top: 20px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="step7AlgoBadge" class="badge badge-unit" style="font-size: 12px;">Greedy Algorithm Trace</span>
+                        <span id="step7LiveStatus" class="badge badge-success" style="font-size: 12px;">Live Backend Trace</span>
+                      </div>
+                      <h4 id="step7AlgoTitle" style="font-size: 17px; font-weight: 700; margin: 4px 0 2px;">
+                        Real-time DAA Execution Pipeline
+                      </h4>
+                      <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">
+                        Step-by-step inspection driven by authentic backend algorithm execution traces.
+                      </p>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 14px; font-size: 12.5px; font-family: var(--font-mono);">
+                      <span>Execution: <strong id="step7ExecTime">0.0 ms</strong></span>
+                      <span>Quality: <strong id="step7ObjScore" style="color: var(--primary);">0/100</strong></span>
+                    </div>
+                  </div>
+
+                  <!-- Controls & Playback Bar -->
+                  <div class="visualizer-controls" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <button id="btnStep7Play" class="btn btn-primary btn-sm">▶ Play Trace</button>
+                      <button id="btnStep7Prev" class="btn btn-outline btn-sm">⏮ Prev</button>
+                      <button id="btnStep7Next" class="btn btn-outline btn-sm">Next ⏭</button>
+                      <button id="btnStep7Skip" class="btn btn-outline btn-sm" title="Skip to final optimized paper">⏩ Skip to End</button>
+                      <button id="btnStep7Reset" class="btn btn-outline btn-sm">↺ Replay</button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                      <span id="step7StepCounter" style="font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; color: var(--text-primary);">
+                        Step 0 / 0
+                      </span>
+
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">Speed:</span>
+                        <select id="step7SpeedSelect" class="form-control form-control-sm form-select" style="width: 100px; padding: 3px 8px; font-size: 12px;">
+                          <option value="1500">0.5x Slow</option>
+                          <option value="800" selected>1x Normal</option>
+                          <option value="400">2x Fast</option>
+                          <option value="150">5x Turbo</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Step Progress Bar -->
+                  <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; margin-bottom: 18px;">
+                    <div id="step7ProgressBar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease;"></div>
+                  </div>
+
+                  <!-- Live Constraints & Metrics Panel -->
+                  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px;">
+                    <div class="stat-card" style="padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                      <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Paper Marks</div>
+                      <div id="step7MarksVal" style="font-size: 18px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0 / 100 M</div>
+                      <div id="step7RemMarksVal" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Remaining: 100M</div>
+                    </div>
+
+                    <div class="stat-card" style="padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                      <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Questions Selected</div>
+                      <div id="step7QuestionsVal" style="font-size: 18px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0 / 10</div>
+                      <div id="step7QuestionsSub" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Target slots</div>
+                    </div>
+
+                    <div class="stat-card" style="padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                      <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Cognitive Balance</div>
+                      <div id="step7DiffVal" style="display: flex; gap: 4px; margin-top: 4px; font-size: 11px;">
+                        <span class="badge badge-easy" id="step7DiffE">E: 0</span>
+                        <span class="badge badge-medium" id="step7DiffM">M: 0</span>
+                        <span class="badge badge-hard" id="step7DiffH">H: 0</span>
+                      </div>
+                      <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 4px;">Bloom's levels</div>
+                    </div>
+
+                    <div class="stat-card" style="padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                      <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Syllabus Units</div>
+                      <div id="step7UnitsVal" style="display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap;">
+                        <span class="badge badge-unit" id="step7U1">U1:0</span>
+                        <span class="badge badge-unit" id="step7U2">U2:0</span>
+                        <span class="badge badge-unit" id="step7U3">U3:0</span>
+                        <span class="badge badge-unit" id="step7U4">U4:0</span>
+                        <span class="badge badge-unit" id="step7U5">U5:0</span>
+                      </div>
+                    </div>
+
+                    <div class="stat-card" style="padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                      <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Heuristic Quality</div>
+                      <div id="step7QualityVal" style="font-size: 18px; font-weight: 800; color: var(--primary); margin-top: 2px;">--</div>
+                      <div id="step7QualitySub" style="font-size: 11px; color: var(--success); margin-top: 2px;">Multi-attribute</div>
+                    </div>
+                  </div>
+
+                  <!-- Dynamic Stage Visualization Content -->
+                  <div id="step7StageContainer" style="background: var(--bg-card-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; min-height: 280px;">
+                    <!-- Populated dynamically per trace event -->
+                  </div>
+
+                  <!-- Completion Action Banner -->
+                  <div id="step7CompletionBanner" style="display: none; margin-top: 20px; background: var(--primary-light); border: 1.5px solid var(--primary); border-radius: var(--radius-md); padding: 18px 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                      <div>
+                        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--primary);">Optimization Succeeded</div>
+                        <h4 style="font-size: 17px; font-weight: 700; margin: 2px 0 4px; color: var(--text-primary);">
+                          🎓 Balanced Examination Paper Ready
+                        </h4>
+                        <p style="font-size: 12.5px; color: var(--text-secondary); margin: 0;">
+                          All constraints, cognitive distributions, and section marks have been rigorously satisfied.
+                        </p>
+                      </div>
+
+                      <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-outline" id="step7DownloadPdfBtn">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          Download PDF
+                        </button>
+                        <button class="btn btn-primary" onclick="GeneratorView.proceedToPaperView()">
+                          View Full Paper & Blueprint →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

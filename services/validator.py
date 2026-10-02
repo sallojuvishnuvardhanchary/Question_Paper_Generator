@@ -31,9 +31,65 @@ def validate_question_paper_structure(
     target_total_marks = int(paper_config.get('total_marks', 100))
     paper_type = paper_config.get('paper_type', 'theory_bits')
     structure = paper_config.get('structure') or []
+    inst = paper_config.get('institution_data') or paper_config.get('header_config') or {}
 
-    # 1. Total Marks Check (Excluding internal choice alternatives from double-counting)
-    actual_total_marks = 0
+    # 1. Header Information & Logo Verification
+    inst_name = inst.get('institution_name') or paper_config.get('institution_name')
+    exam_name = inst.get('exam_name') or paper_config.get('paper_name')
+    header_valid = bool(inst_name and exam_name)
+    checks.append({
+        'name': 'Examination Header Completeness',
+        'passed': header_valid,
+        'target': 'Institution Name & Exam Title defined',
+        'actual': f"{inst_name or 'Missing'} | {exam_name or 'Missing'}",
+        'message': 'Institutional header and exam metadata fully configured.' if header_valid else 'Institution name or exam title missing.'
+    })
+    if not header_valid:
+        warnings.append("Institutional header incomplete: Institution name or Exam title is missing.")
+
+    logo_path = paper_config.get('logo_path') or inst.get('logo_path')
+    if logo_path:
+        ext = logo_path.rsplit('.', 1)[-1].lower() if '.' in logo_path else ''
+        logo_valid = ext in ('png', 'jpg', 'jpeg')
+        checks.append({
+            'name': 'Institution Logo Format',
+            'passed': logo_valid,
+            'target': 'PNG, JPG, or JPEG format',
+            'actual': f".{ext}" if ext else 'Unknown',
+            'message': 'Valid high-resolution logo formatted for ReportLab PDF insertion.' if logo_valid else f"Unsupported logo format '.{ext}'."
+        })
+        if not logo_valid:
+            errors.append(f"Invalid logo image format '.{ext}'. Supported formats: PNG, JPG, JPEG.")
+
+    # 2. Section Attempt & Section Marks Calculation Verification
+    section_math_valid = True
+    expected_structure_marks = 0
+    if structure:
+        for p_idx, part in enumerate(structure, start=1):
+            for s_idx, sec in enumerate(part.get('sections', []), start=1):
+                q_disp = int(sec.get('question_count', 0))
+                q_att = int(sec.get('questions_to_answer', q_disp)) or q_disp
+                m_q = int(sec.get('marks_per_question', 0))
+
+                if q_att > q_disp:
+                    section_math_valid = False
+                    errors.append(f"Section {p_idx}.{s_idx}: Questions to answer ({q_att}) cannot exceed displayed questions ({q_disp}).")
+
+                sec_marks = q_att * m_q
+                expected_structure_marks += sec_marks
+
+        checks.append({
+            'name': 'Section Attempt & Marks Logic',
+            'passed': section_math_valid,
+            'target': 'N_attempt <= N_displayed and Section Marks = N_attempt * Marks_per_Q',
+            'actual': f"Sum of sections: {expected_structure_marks} Marks",
+            'message': 'All sections enforce valid attempt limits and mathematical section marks.' if section_math_valid else 'Invalid attempt counts in sections.'
+        })
+
+    # 3. Total Marks Check (Sum of Section Marks = Paper Budget)
+    # If paper has questions with section_marks or questions_to_answer
+    section_grouped_marks = 0
+    seen_sections = set()
     choice_seen = set()
     for q in selected_questions:
         c_group = q.get('choice_group')
@@ -41,7 +97,16 @@ def validate_question_paper_structure(
             if c_group in choice_seen:
                 continue
             choice_seen.add(c_group)
-        actual_total_marks += int(q.get('marks', 0))
+        sec_key = (q.get('part_name'), q.get('section_name'))
+        if sec_key not in seen_sections and q.get('section_marks'):
+            seen_sections.add(sec_key)
+            section_grouped_marks += int(q.get('section_marks', 0))
+        elif not q.get('section_marks'):
+            section_grouped_marks += int(q.get('marks', 0))
+
+    actual_total_marks = section_grouped_marks if seen_sections else sum(
+        int(q.get('marks', 0)) for q in selected_questions if not q.get('is_choice')
+    )
 
     marks_passed = (actual_total_marks == target_total_marks)
     checks.append({
@@ -49,12 +114,36 @@ def validate_question_paper_structure(
         'passed': marks_passed,
         'target': f"{target_total_marks} Marks",
         'actual': f"{actual_total_marks} Marks",
-        'message': 'Total marks strictly equal target exam mark budget.' if marks_passed else f"Marks discrepancy: Expected {target_total_marks}, got {actual_total_marks}."
+        'message': 'Total paper marks strictly equal target exam mark budget.' if marks_passed else f"Marks discrepancy: Expected {target_total_marks}, got {actual_total_marks}."
     })
     if not marks_passed:
         errors.append(f"Total marks mismatch: Expected {target_total_marks} marks, calculated {actual_total_marks} marks.")
 
-    # 2. Question Count & Structure Check
+    # 4. Continuous Question Numbering Check
+    main_questions = [q for q in selected_questions if not q.get('is_choice')]
+    q_numbers = []
+    for q in main_questions:
+        try:
+            q_numbers.append(int(q.get('question_number', 0)))
+        except (ValueError, TypeError):
+            pass
+
+    continuous_numbers = False
+    if q_numbers:
+        expected_seq = list(range(1, len(q_numbers) + 1))
+        continuous_numbers = (q_numbers == expected_seq)
+
+    checks.append({
+        'name': 'Continuous Question Numbering',
+        'passed': continuous_numbers or len(q_numbers) == 0,
+        'target': f"Q1 to Q{len(q_numbers)} sequential across sections",
+        'actual': f"Q{min(q_numbers, default=1)} to Q{max(q_numbers, default=1)}" if q_numbers else "Custom labels",
+        'message': f"Question numbers Q1 through Q{len(q_numbers)} are continuous across all sections." if continuous_numbers else "Non-continuous question numbers detected."
+    })
+    if not continuous_numbers and q_numbers:
+        warnings.append(f"Question numbering has gaps or non-sequential labels: {q_numbers[:10]}")
+
+    # 5. Question Count & Availability Check
     total_q_count = len(selected_questions)
     checks.append({
         'name': 'Question Count & Availability',

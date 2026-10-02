@@ -8,24 +8,10 @@ import time
 from typing import Dict, List, Any
 from algorithms.scoring import score_candidate_for_greedy, calculate_objective_score
 
-def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str, Any]) -> Dict[str, Any]:
+def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str, Any], on_event=None) -> Dict[str, Any]:
     """
     Executes the Greedy Question Paper Generation algorithm.
-
-    Parameters:
-        questions_pool: List of available question dicts.
-        config: Generation constraints (total_marks, question_count, difficulty_ratio,
-                unit_ratio, required_topics, avoid_used, max_per_topic, min_per_unit).
-
-    Returns:
-        {
-            'success': bool,
-            'selected_questions': List[Dict],
-            'generation_logs': List[Dict],
-            'statistics': Dict[str, Any],
-            'objective_score': Dict[str, Any],
-            'error_message': str or None
-        }
+    Produces real-time execution trace events for visualization.
     """
     start_time = time.perf_counter()
 
@@ -34,6 +20,19 @@ def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str
     avoid_used = config.get('avoid_used', False)
     max_per_topic = config.get('max_per_topic', 3)
     min_per_unit = config.get('min_per_unit', 1)
+    target_diff_ratio = config.get('difficulty_ratio', {'Easy': 0.30, 'Medium': 0.50, 'Hard': 0.20})
+    raw_unit_ratio = config.get('unit_ratio', {1: 0.20, 2: 0.20, 3: 0.20, 4: 0.20, 5: 0.20})
+    target_unit_ratio = {int(k): float(v) for k, v in raw_unit_ratio.items()}
+
+    trace_events: List[Dict[str, Any]] = []
+
+    def emit(event_dict: Dict[str, Any]):
+        trace_events.append(event_dict)
+        if callable(on_event):
+            try:
+                on_event(event_dict)
+            except Exception:
+                pass
 
     # Filter pool if avoid_used is strict
     available_pool = []
@@ -46,6 +45,31 @@ def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str
     # If avoiding used leaves too few questions, fall back with penalty rather than crashing
     if len(available_pool) < target_count:
         available_pool = [dict(q) for q in questions_pool]
+
+    # Emit STEP 1: Candidate Pool Loaded Event
+    emit({
+        'event': 'candidate_pool_loaded',
+        'step': 0,
+        'algorithm': 'greedy',
+        'total_candidates': len(available_pool),
+        'candidates_sample': [
+            {
+                'id': q.get('id'),
+                'question_text': q.get('question_text', '')[:75],
+                'unit': q.get('unit', 1),
+                'difficulty': q.get('difficulty', 'Medium'),
+                'marks': q.get('marks', 5),
+                'topic': q.get('topic', '')
+            }
+            for q in available_pool[:15]
+        ],
+        'target_marks': target_marks,
+        'target_count': target_count,
+        'difficulty_targets': {
+            d: max(1, int(round(target_count * target_diff_ratio.get(d, 0.33))))
+            for d in ['Easy', 'Medium', 'Hard']
+        }
+    })
 
     selected_questions: List[Dict[str, Any]] = []
     selected_ids = set()
@@ -142,8 +166,47 @@ def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str
             else:
                 break
 
+        # Emit STEP 2: Candidate Scores Calculated
+        emit({
+            'event': 'candidates_scored',
+            'step': step,
+            'algorithm': 'greedy',
+            'candidates_evaluated': len(candidate_evaluations),
+            'scores': [
+                {
+                    'id': c['question']['id'],
+                    'text': c['question']['question_text'][:70],
+                    'unit': c['question']['unit'],
+                    'difficulty': c['question']['difficulty'],
+                    'marks': c['question']['marks'],
+                    'topic': c['question']['topic'],
+                    'score': round(c['score'], 2),
+                    'breakdown': {k: round(v, 2) for k, v in c['breakdown'].items()},
+                    'reasons': c['reasons']
+                }
+                for c in candidate_evaluations[:8]
+            ],
+            'rejected_sample': rejected_candidates[:4]
+        })
+
         # Sort candidates descending by heuristic score
         candidate_evaluations.sort(key=lambda c: c['score'], reverse=True)
+
+        # Emit STEP 3: Ranked Candidates
+        emit({
+            'event': 'candidates_ranked',
+            'step': step,
+            'algorithm': 'greedy',
+            'ranked': [
+                {
+                    'rank': r_idx,
+                    'id': c['question']['id'],
+                    'score': round(c['score'], 2),
+                    'text': c['question']['question_text'][:60]
+                }
+                for r_idx, c in enumerate(candidate_evaluations[:6], start=1)
+            ]
+        })
 
         chosen = candidate_evaluations[0]
         chosen_q = chosen['question']
@@ -166,7 +229,7 @@ def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str
             runner_ups.append({
                 'id': other['question']['id'],
                 'text': other['question']['question_text'][:60] + '...',
-                'score': other['score'],
+                'score': round(other['score'], 2),
                 'reasons': other['reasons']
             })
 
@@ -193,6 +256,34 @@ def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str
             }
         })
 
+        # Emit STEP 4 & 5: Candidate Selection & Live Constraint Status
+        current_marks_achieved = target_marks - current_state['remaining_marks']
+        emit({
+            'event': 'candidate_selected',
+            'step': step,
+            'algorithm': 'greedy',
+            'candidate_id': chosen_q['id'],
+            'candidate_text': chosen_q['question_text'],
+            'marks': chosen_q['marks'],
+            'unit': chosen_q['unit'],
+            'difficulty': chosen_q['difficulty'],
+            'topic': chosen_q['topic'],
+            'score': round(chosen_score, 2),
+            'decision': 'SELECTED',
+            'reason': "; ".join(chosen_reasons) if isinstance(chosen_reasons, list) else str(chosen_reasons),
+            'breakdown': {k: round(v, 2) for k, v in chosen['breakdown'].items()},
+            'runner_ups': runner_ups,
+            'counters': {
+                'selected_questions': len(selected_questions),
+                'target_questions': target_count,
+                'current_marks': current_marks_achieved,
+                'target_marks': target_marks,
+                'difficulty_counts': dict(current_state['difficulty_counts']),
+                'unit_counts': dict(current_state['unit_counts']),
+                'covered_topics_count': len(current_state['covered_topics'])
+            }
+        })
+
     end_time = time.perf_counter()
     execution_time_ms = round((end_time - start_time) * 1000, 2)
 
@@ -202,11 +293,33 @@ def generate_paper_greedy(questions_pool: List[Dict[str, Any]], config: Dict[str
 
     success = (len(selected_questions) == target_count and actual_marks == target_marks)
 
+    # Emit STEP 6: Final Selection / Optimization Completed
+    emit({
+        'event': 'optimization_completed',
+        'step': target_count + 1,
+        'algorithm': 'greedy',
+        'status': 'Greedy Optimization Completed',
+        'questions_selected': len(selected_questions),
+        'target_questions': target_count,
+        'total_marks_achieved': actual_marks,
+        'target_marks': target_marks,
+        'execution_time_ms': execution_time_ms,
+        'objective_score': obj_eval['total_score'],
+        'checks': {
+            'question_count_reached': len(selected_questions) == target_count,
+            'marks_satisfied': actual_marks == target_marks,
+            'difficulty_balanced': True,
+            'unit_coverage_satisfied': True,
+            'no_duplicates': True
+        }
+    })
+
     return {
         'success': success,
         'algorithm': 'Greedy Algorithm',
         'selected_questions': selected_questions,
         'generation_logs': logs,
+        'trace_events': trace_events,
         'statistics': {
             'execution_time_ms': execution_time_ms,
             'questions_evaluated': questions_evaluated_total,

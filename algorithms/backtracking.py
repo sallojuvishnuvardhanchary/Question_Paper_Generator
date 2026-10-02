@@ -8,25 +8,10 @@ import time
 from typing import Dict, List, Any, Optional
 from algorithms.scoring import calculate_objective_score
 
-def generate_paper_backtracking(questions_pool: List[Dict[str, Any]], config: Dict[str, Any]) -> Dict[str, Any]:
+def generate_paper_backtracking(questions_pool: List[Dict[str, Any]], config: Dict[str, Any], on_event=None) -> Dict[str, Any]:
     """
     Executes genuine Recursive Backtracking with Branch-and-Bound Pruning.
-
-    Parameters:
-        questions_pool: Available questions list.
-        config: User constraints (total_marks, question_count, difficulty_ratio,
-                unit_ratio, required_topics, avoid_used, max_per_topic).
-
-    Returns:
-        {
-            'success': bool,
-            'selected_questions': List[Dict],
-            'generation_logs': List[Dict],
-            'search_tree': List[Dict],
-            'statistics': Dict[str, Any],
-            'objective_score': Dict[str, Any],
-            'error_message': str or None
-        }
+    Produces structured execution trace events for visualization.
     """
     start_time = time.perf_counter()
 
@@ -38,6 +23,16 @@ def generate_paper_backtracking(questions_pool: List[Dict[str, Any]], config: Di
     raw_unit_ratio = config.get('unit_ratio', {1: 0.20, 2: 0.20, 3: 0.20, 4: 0.20, 5: 0.20})
     target_unit_ratio = {int(k): float(v) for k, v in raw_unit_ratio.items()}
     required_topics = set(config.get('required_topics', []))
+
+    trace_events: List[Dict[str, Any]] = []
+
+    def emit(event_dict: Dict[str, Any]):
+        trace_events.append(event_dict)
+        if callable(on_event):
+            try:
+                on_event(event_dict)
+            except Exception:
+                pass
 
     # Calculate allowable margins for difficulty and units to guide pruning
     max_diff_caps = {
@@ -95,21 +90,50 @@ def generate_paper_backtracking(questions_pool: List[Dict[str, Any]], config: Di
 
     MAX_TREE_LOGS = 600  # Cap visualization log size for UI responsiveness
 
+    emit({
+        'event': 'tree_init',
+        'algorithm': 'backtracking',
+        'target_marks': target_marks,
+        'target_count': target_count,
+        'pool_size': len(pool)
+    })
+
     def log_tree_event(node_id: int, parent_id: Optional[int], depth: int, action: str, q_id: Optional[int], 
-                       q_text: str, reason: str, current_marks: int, current_count: int):
+                       q_text: str, reason: str, current_marks: int, current_count: int,
+                       selected_list: Optional[List[Any]] = None, upper_bound_val: Optional[int] = None):
         nonlocal states_explored
+        status_map = {
+            'VISIT': 'EXPLORE',
+            'SELECT': 'SELECTED',
+            'PRUNE': 'PRUNED',
+            'BACKTRACK': 'BACKTRACK',
+            'SOLUTION': 'BEST SOLUTION'
+        }
+        sel_ids = [q['id'] for q in (selected_list or [])]
+        ub = upper_bound_val if upper_bound_val is not None else (current_marks + (target_count - current_count) * 20)
+        
+        event_dict = {
+            'event': 'tree_node',
+            'node_id': node_id,
+            'parent_id': parent_id,
+            'depth': depth,
+            'action': action,
+            'status': status_map.get(action, action),
+            'question_id': q_id,
+            'question_text': q_text[:50] + '...' if q_text else '',
+            'reason': reason,
+            'current_marks': current_marks,
+            'target_marks': target_marks,
+            'current_count': current_count,
+            'target_count': target_count,
+            'selected_ids': sel_ids,
+            'upper_bound': ub,
+            'best_score': round(best_score, 2) if best_score > 0 else 0.0
+        }
+
         if len(search_tree_log) < MAX_TREE_LOGS:
-            search_tree_log.append({
-                'node_id': node_id,
-                'parent_id': parent_id,
-                'depth': depth,
-                'action': action,       # 'VISIT', 'PRUNE', 'SELECT', 'BACKTRACK', 'SOLUTION'
-                'question_id': q_id,
-                'question_text': q_text[:50] + '...' if q_text else '',
-                'reason': reason,
-                'current_marks': current_marks,
-                'current_count': current_count
-            })
+            search_tree_log.append(event_dict)
+        emit(event_dict)
 
     node_counter = 0
 
@@ -281,12 +305,30 @@ def generate_paper_backtracking(questions_pool: List[Dict[str, Any]], config: Di
         final_eval = {'total_score': 0.0, 'breakdown': {}, 'details': {}}
         success = False
 
+    actual_marks = sum(q['marks'] for q in best_solution) if best_solution else 0
+
+    emit({
+        'event': 'optimization_completed',
+        'algorithm': 'backtracking',
+        'status': 'Backtracking with Branch & Bound Completed' if success else 'Backtracking Infeasible',
+        'nodes_explored': states_explored,
+        'branches_pruned': branches_pruned,
+        'backtracks_count': backtracks_count,
+        'best_score': round(best_score, 2) if best_score > 0 else 0.0,
+        'execution_time_ms': execution_time_ms,
+        'questions_selected': len(best_solution) if best_solution else 0,
+        'target_questions': target_count,
+        'total_marks_achieved': actual_marks,
+        'target_marks': target_marks
+    })
+
     return {
         'success': success,
         'algorithm': 'Backtracking Algorithm',
         'selected_questions': best_solution if best_solution else [],
         'generation_logs': linear_logs,
         'search_tree': search_tree_log,
+        'trace_events': trace_events,
         'statistics': {
             'execution_time_ms': execution_time_ms,
             'states_explored': states_explored,
@@ -294,7 +336,7 @@ def generate_paper_backtracking(questions_pool: List[Dict[str, Any]], config: Di
             'branches_pruned': branches_pruned,
             'questions_selected': len(best_solution) if best_solution else 0,
             'target_questions': target_count,
-            'total_marks_achieved': sum(q['marks'] for q in best_solution) if best_solution else 0,
+            'total_marks_achieved': actual_marks,
             'target_marks': target_marks
         },
         'objective_score': final_eval,

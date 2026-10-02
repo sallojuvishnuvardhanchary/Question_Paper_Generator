@@ -9,9 +9,11 @@ class Config:
     
     # File Storage Paths
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+    LOGO_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'logos')
     GENERATED_PAPERS_FOLDER = os.path.join(BASE_DIR, 'generated_papers')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max upload
     ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
+    ALLOWED_LOGO_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     
     # AI / LLM Integration Configuration
     AI_PROVIDER = os.environ.get('AI_PROVIDER', 'local') # 'local', 'openai', 'gemini'
